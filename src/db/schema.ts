@@ -15,22 +15,50 @@ export const users = pgTable('users', {
 export const nodes = pgTable('nodes', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
+  type: text('type').notNull().default('edge'), // 'relay' | 'proxy' | 'edge'
   ipAddress: text('ip_address').notNull(),
+  domain: text('domain'),
   port: integer('port').notNull(),
   country: text('country').notNull(),
   region: text('region').notNull().default('Global'),
   provider: text('provider').notNull().default('Custom'), // Hetzner, AWS, Railway, etc.
   protocol: text('protocol').notNull(), // 'VLESS', 'Trojan', etc.
+  transport: text('transport').default('tcp'),
+  tlsSettings: jsonb('tls_settings').default({}),
   status: text('status').notNull().default('offline'),
   latency: integer('latency').default(0),
   jitter: doublePrecision('jitter').default(0),
   packetLoss: doublePrecision('packet_loss').default(0),
   uptime: doublePrecision('uptime').default(100),
+  bandwidth: doublePrecision('bandwidth').default(0),
   score: integer('score').default(0), // Smart Node Score
   health: integer('health').default(100),
+  priority: integer('priority').default(1),
+  tags: jsonb('tags').default([]),
   settings: jsonb('settings').default({}), // Store advanced TCP/UDP settings
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+export const ips = pgTable('ips', {
+  id: serial('id').primaryKey(),
+  nodeId: integer('node_id').references(() => nodes.id),
+  address: text('address').notNull(),
+  type: text('type').notNull(), // 'ipv4' | 'ipv6' | 'domain'
+  active: boolean('active').default(true),
+  health: integer('health').default(100),
+  tags: jsonb('tags').default([]), // ['provider', 'region']
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const protocolProfiles = pgTable('protocol_profiles', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(), // Gaming, Streaming, Custom, etc.
+  protocol: text('protocol').notNull(),
+  settings: jsonb('settings').default({}), // Advanced parameters
+  isDefault: boolean('is_default').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 
 export const apiKeys = pgTable('api_keys', {
   id: serial('id').primaryKey(),

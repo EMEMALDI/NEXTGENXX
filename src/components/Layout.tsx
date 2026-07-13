@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAppStore } from '../store';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Server, Users, Settings, LogOut, Menu, Moon, Sun, Activity, ShieldCheck, Key, Gamepad2, GitMerge } from 'lucide-react';
+import { LayoutDashboard, Server, Users, Settings, LogOut, Menu, Moon, Sun, Activity, ShieldCheck, Key, Gamepad2, GitMerge, Globe, Layers, Network } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -9,6 +9,9 @@ import { signOut } from 'firebase/auth';
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Server, label: 'Nodes', path: '/nodes' },
+  { icon: Network, label: 'Relays & Proxies', path: '/relays' },
+  { icon: Globe, label: 'IP Management', path: '/ips' },
+  { icon: Layers, label: 'Protocol Engine', path: '/protocols' },
   { icon: GitMerge, label: 'Smart Routing', path: '/routing' },
   { icon: Gamepad2, label: 'Gaming Optimizer', path: '/gaming' },
   { icon: Users, label: 'Subscriptions', path: '/subscriptions' },

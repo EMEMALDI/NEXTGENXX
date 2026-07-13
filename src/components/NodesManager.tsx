@@ -1,16 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Server, Plus, Search, Activity, Globe, Shield, Play, Square, MoreVertical, Cloud, Signal } from 'lucide-react';
-
-const mockNodes = [
-  { id: 1, name: 'EU-Central-1', ip: '45.132.89.11', region: 'Germany', provider: 'Hetzner', protocol: 'VLESS-XTLS', status: 'online', latency: 24, jitter: 1.2, packetLoss: 0.0, score: 98, users: 432 },
-  { id: 2, name: 'AP-East-3', ip: '192.241.15.99', region: 'Singapore', provider: 'DigitalOcean', protocol: 'Trojan', status: 'online', latency: 45, jitter: 2.1, packetLoss: 0.1, score: 92, users: 890 },
-  { id: 3, name: 'US-West-2', ip: '143.198.22.8', region: 'US West', provider: 'AWS', protocol: 'Hysteria2', status: 'offline', latency: 0, jitter: 0, packetLoss: 100, score: 0, users: 0 },
-  { id: 4, name: 'Gaming-LowPing', ip: '104.28.11.20', region: 'UAE (Dubai)', provider: 'Oracle Cloud', protocol: 'Shadowsocks', status: 'online', latency: 12, jitter: 0.5, packetLoss: 0.0, score: 99, users: 156 },
-];
+import { Server, Plus, Search, Activity, Globe, Shield, Play, Square, MoreVertical, Cloud, Signal, X } from 'lucide-react';
+import { fetchWithAuth } from '../lib/api';
 
 export const NodesManager = () => {
   const [search, setSearch] = useState('');
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    ipAddress: '',
+    port: 443,
+    country: 'Germany',
+    region: 'EU-Central',
+    provider: 'Hetzner',
+    protocol: 'VLESS',
+  });
+
+  const loadNodes = async () => {
+    try {
+      const data = await fetchWithAuth('/api/nodes');
+      setNodes(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    loadNodes();
+  }, []);
+
+  const handleDeploy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsLoading(true);
+      await fetchWithAuth('/api/nodes', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      });
+      setShowModal(false);
+      loadNodes();
+    } catch (e) {
+      alert("Error saving node: " + e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this node?')) return;
+    try {
+      await fetchWithAuth(`/api/nodes/${id}`, { method: 'DELETE' });
+      loadNodes();
+    } catch (e) {
+      alert('Error deleting node: ' + e);
+    }
+  };
+
+  const filteredNodes = nodes.filter(n => n.name.toLowerCase().includes(search.toLowerCase()) || n.ipAddress.includes(search));
 
   return (
     <div className="space-y-6">
@@ -30,23 +78,82 @@ export const NodesManager = () => {
               className="bg-transparent border-none outline-none ml-2 w-full text-sm"
             />
           </div>
-          <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-medium transition-all shadow-lg shadow-indigo-500/30 whitespace-nowrap">
+          <button onClick={() => setShowModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-medium transition-all shadow-lg shadow-indigo-500/30 whitespace-nowrap">
             <Plus className="w-5 h-5" />
             <span className="hidden sm:inline">Deploy Node</span>
           </button>
         </div>
       </div>
 
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Deploy New Node</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleDeploy} className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Node Name</label>
+                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500" placeholder="EU-Central-1" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">IP Address</label>
+                <input required type="text" value={formData.ipAddress} onChange={e => setFormData({...formData, ipAddress: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500" placeholder="192.168.1.1" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Port</label>
+                  <input required type="number" value={formData.port} onChange={e => setFormData({...formData, port: parseInt(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Protocol</label>
+                  <select value={formData.protocol} onChange={e => setFormData({...formData, protocol: e.target.value})} className="w-full bg-gray-800 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500">
+                    <option>VLESS</option>
+                    <option>Trojan</option>
+                    <option>VMess</option>
+                    <option>Shadowsocks</option>
+                    <option>Reality</option>
+                    <option>Hysteria2</option>
+                    <option>TUIC</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Region</label>
+                  <input required type="text" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Country</label>
+                  <input required type="text" value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500" />
+                </div>
+              </div>
+              <button disabled={isLoading} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl mt-4 disabled:opacity-50">
+                {isLoading ? 'Deploying...' : 'Deploy Node'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {mockNodes.map((node) => (
-          <NodeCard key={node.id} node={node} />
+        {filteredNodes.map((node) => (
+          <NodeCard key={node.id} node={node} onDelete={() => handleDelete(node.id)} />
         ))}
+        {filteredNodes.length === 0 && (
+          <div className="col-span-full py-12 text-center text-gray-500">
+            No nodes found. Deploy your first node to get started.
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const NodeCard = ({ node }: any) => {
+const NodeCard = ({ node, onDelete }: any) => {
   const isOnline = node.status === 'online';
   
   return (
@@ -66,7 +173,7 @@ const NodeCard = ({ node }: any) => {
           <div>
             <h3 className="font-bold text-lg">{node.name}</h3>
             <div className="flex items-center gap-2 text-sm text-gray-500 font-mono">
-              <span>{node.ip}</span>
+              <span>{node.ipAddress}</span>
               <span className="w-1 h-1 rounded-full bg-gray-400" />
               <span className="uppercase text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-white/10">
                 {node.protocol}
@@ -75,7 +182,7 @@ const NodeCard = ({ node }: any) => {
           </div>
         </div>
         <div className="flex flex-col items-end">
-          <div className="text-2xl font-bold font-mono text-indigo-500">{node.score}</div>
+          <div className="text-2xl font-bold font-mono text-indigo-500">{node.score || 0}</div>
           <div className="text-[10px] uppercase text-gray-500 font-bold">Score</div>
         </div>
       </div>
@@ -86,7 +193,7 @@ const NodeCard = ({ node }: any) => {
             <Globe className="w-4 h-4 text-blue-500" />
             <span className="text-xs">Location</span>
           </div>
-          <p className="font-medium text-sm truncate">{node.region}</p>
+          <p className="font-medium text-sm truncate">{node.country} ({node.region})</p>
         </div>
         <div className="glass-panel rounded-xl p-3 bg-white/50 dark:bg-black/20 flex flex-col gap-1">
           <div className="flex items-center gap-2 text-gray-500">
@@ -119,7 +226,7 @@ const NodeCard = ({ node }: any) => {
                <div key={i} className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 border-2 border-white dark:border-gray-900" />
             ))}
           </div>
-          <span className="text-xs text-gray-500 font-medium ml-2">{node.users} active</span>
+          <span className="text-xs text-gray-500 font-medium ml-2">{node.users || 0} active</span>
         </div>
         
         <div className="flex gap-2">
@@ -132,8 +239,8 @@ const NodeCard = ({ node }: any) => {
               <Play className="w-4 h-4 fill-current" />
             </button>
           )}
-          <button className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors">
-            <Shield className="w-4 h-4" />
+          <button onClick={onDelete} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors" title="Delete">
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>

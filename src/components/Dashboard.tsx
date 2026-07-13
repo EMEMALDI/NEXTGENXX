@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Server, Users, ArrowUpRight, ArrowDownRight, Zap, Cpu, MemoryStick } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { fetchWithAuth } from '../lib/api';
 
 const mockTraffic = [
   { time: '00:00', traffic: 120, cpu: 45, ram: 60 },
@@ -15,13 +16,43 @@ const mockTraffic = [
 
 export const Dashboard = () => {
   const [stats, setStats] = useState({
-    users: 1245,
-    nodes: 24,
-    bandwidth: 8.4, // TB
-    activeConns: 8432,
-    avgPing: 42,
-    packetLoss: 0.1,
+    users: 0,
+    nodes: 0,
+    bandwidth: 0, // TB
+    activeConns: 0,
+    avgPing: 0,
+    packetLoss: 0,
   });
+
+  const [topNodes, setTopNodes] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const [dashData, nodesData] = await Promise.all([
+          fetchWithAuth('/api/admin/dashboard'),
+          fetchWithAuth('/api/nodes')
+        ]);
+        
+        setStats({
+          users: dashData.totalUsers,
+          nodes: dashData.totalNodes,
+          bandwidth: dashData.networkTraffic ? parseFloat(dashData.networkTraffic) : 0,
+          activeConns: dashData.activeSubscriptions || 0,
+          avgPing: 42,
+          packetLoss: 0.1,
+        });
+
+        // Sort nodes by score descending
+        const sorted = nodesData.sort((a: any, b: any) => (b.score || 0) - (a.score || 0)).slice(0, 5);
+        setTopNodes(sorted);
+
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    loadDashboard();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -123,11 +154,9 @@ export const Dashboard = () => {
         <div className="glass-panel p-6 rounded-2xl dark:border-white/10 shadow-lg flex flex-col">
           <h3 className="text-lg font-semibold mb-6">Top Nodes by Score</h3>
           <div className="space-y-4 flex-1">
-            <NodeListItem name="Frankfurt-01" flag="🇩🇪" protocol="VLESS-XTLS" usage={98} />
-            <NodeListItem name="Singapore-03" flag="🇸🇬" protocol="Trojan" usage={95} />
-            <NodeListItem name="Tokyo-02" flag="🇯🇵" protocol="Shadowsocks" usage={91} />
-            <NodeListItem name="London-01" flag="🇬🇧" protocol="Hysteria2" usage={88} />
-            <NodeListItem name="US-West-05" flag="🇺🇸" protocol="VMess" usage={84} />
+            {topNodes.length > 0 ? topNodes.map(node => (
+              <NodeListItem key={node.id} name={node.name} protocol={node.protocol} usage={node.health || 100} />
+            )) : <div className="text-gray-500 text-sm">No nodes found.</div>}
           </div>
         </div>
       </div>
@@ -175,7 +204,7 @@ const MetricCard = ({ title, value, icon: Icon, trend, up, color }: any) => (
 const NodeListItem = ({ name, flag, protocol, usage }: any) => (
   <div className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer border border-transparent dark:hover:border-white/5">
     <div className="flex items-center gap-3">
-      <span className="text-2xl">{flag}</span>
+      <span className="text-2xl">{flag || '🌍'}</span>
       <div>
         <h5 className="font-medium text-sm">{name}</h5>
         <p className="text-xs text-gray-500 font-mono">{protocol}</p>

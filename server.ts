@@ -65,8 +65,9 @@ async function startServer() {
   // Nodes Management
   app.get('/api/nodes', requireAuth, async (req: AuthRequest, res: Response) => {
     try {
+      const { type } = req.query;
       const allNodes = await db.select().from(nodes);
-      res.json(allNodes);
+      res.json(type ? allNodes.filter(n => n.type === type) : allNodes);
     } catch(err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -74,11 +75,135 @@ async function startServer() {
 
   app.post('/api/nodes', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
-      const { name, ipAddress, port, country, protocol, settings } = req.body;
+      const { name, type, ipAddress, port, country, region, provider, protocol, settings } = req.body;
       const newNode = await db.insert(nodes).values({
-        name, ipAddress, port, country, protocol, settings: settings || {}
+        name, type: type || 'edge', ipAddress, port, country, region, provider, protocol, settings: settings || {}
       }).returning();
       res.json(newNode[0]);
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/nodes/:id', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, type, ipAddress, port, country, region, provider, protocol, status, settings } = req.body;
+      const updatedNode = await db.update(nodes).set({
+        name, type, ipAddress, port, country, region, provider, protocol, status, settings
+      }).where(eq(nodes.id, parseInt(id))).returning();
+      res.json(updatedNode[0]);
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/nodes/:id', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(nodes).where(eq(nodes.id, parseInt(id)));
+      res.json({ success: true });
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // IPs
+  app.get('/api/ips', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { ips } = await import('./src/db/schema.ts');
+      const allIps = await db.select().from(ips);
+      res.json(allIps);
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/ips', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { address, type, nodeId } = req.body;
+      const { ips } = await import('./src/db/schema.ts');
+      const newIp = await db.insert(ips).values({
+        address, type, nodeId: nodeId || null
+      }).returning();
+      res.json(newIp[0]);
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/ips/:id', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { ips } = await import('./src/db/schema.ts');
+      await db.delete(ips).where(eq(ips.id, parseInt(id)));
+      res.json({ success: true });
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Protocol Profiles
+  app.get('/api/protocols/profiles', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { protocolProfiles } = await import('./src/db/schema.ts');
+      const profiles = await db.select().from(protocolProfiles);
+      res.json(profiles);
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/protocols/profiles', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { name, protocol, settings, isDefault } = req.body;
+      const { protocolProfiles } = await import('./src/db/schema.ts');
+      const newProfile = await db.insert(protocolProfiles).values({
+        name, protocol, settings, isDefault
+      }).returning();
+      res.json(newProfile[0]);
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/protocols/profiles/:id', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { protocolProfiles } = await import('./src/db/schema.ts');
+      await db.delete(protocolProfiles).where(eq(protocolProfiles.id, parseInt(id)));
+      res.json({ success: true });
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Users Management
+  app.get('/api/users', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const allUsers = await db.select().from(users);
+      res.json(allUsers);
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/users/:id', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { email, role, status } = req.body;
+      const updatedUser = await db.update(users).set({ email, role, status }).where(eq(users.id, parseInt(id))).returning();
+      res.json(updatedUser[0]);
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/users/:id', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(users).where(eq(users.id, parseInt(id)));
+      res.json({ success: true });
     } catch(err: any) {
       res.status(500).json({ error: err.message });
     }

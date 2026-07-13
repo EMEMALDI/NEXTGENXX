@@ -13,8 +13,14 @@ import { GamingOptimizer } from './components/GamingOptimizer';
 import { APIKeys } from './components/APIKeys';
 import { SmartRouting } from './components/SmartRouting';
 import { Security } from './components/Security';
+import { RelayManager } from './components/RelayManager';
+import { IPManager } from './components/IPManager';
+import { ProtocolEngineComponent } from './components/ProtocolEngine';
+
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
+  const navigate = useNavigate();
   const { user, setUser, setDbUser } = useAppStore();
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
@@ -22,9 +28,11 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const fetchProfile = async (user: any) => {
     const token = await user.getIdToken();
@@ -86,7 +94,7 @@ const Login = () => {
           getIdToken: async () => 'admin-dev-token'
         };
         setUser(dummyUser as any);
-        await fetchProfile(dummyUser);
+        fetchProfile(dummyUser); // Do not await, let redirect happen
         return;
       }
 
@@ -277,6 +285,9 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/nodes" element={<NodesManager />} />
+                  <Route path="/relays" element={<RelayManager />} />
+                  <Route path="/ips" element={<IPManager />} />
+                  <Route path="/protocols" element={<ProtocolEngineComponent />} />
                   <Route path="/routing" element={<SmartRouting />} />
                   <Route path="/gaming" element={<GamingOptimizer />} />
                   <Route path="/subscriptions" element={<div className="p-8"><h1 className="text-2xl font-bold">Subscriptions</h1><p className="text-gray-500 mt-2">Manage user data plans and access tokens.</p></div>} />
