@@ -28,6 +28,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   }, [theme]);
 
   const handleLogout = async () => {
+    localStorage.removeItem('admin_login');
     await signOut(auth);
     setUser(null);
     setDbUser(null);

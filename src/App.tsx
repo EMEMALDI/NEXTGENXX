@@ -53,6 +53,21 @@ const Login = () => {
     try {
       setIsLoading(true);
       setError('');
+
+      // Simple mock admin login bypass
+      if (email === 'admin' && password === 'admin') {
+        localStorage.setItem('admin_login', 'true');
+        const dummyUser = {
+          uid: 'admin',
+          email: 'admin',
+          displayName: 'Admin User',
+          getIdToken: async () => 'admin-dev-token'
+        };
+        setUser(dummyUser as any);
+        await fetchProfile(dummyUser);
+        return;
+      }
+
       const result = await signInWithEmailAndPassword(auth, email, password);
       setUser(result.user);
       await fetchProfile(result.user);
@@ -98,12 +113,12 @@ const Login = () => {
                 <Mail className="h-5 w-5 text-gray-500" />
               </div>
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                placeholder="Admin Email"
+                placeholder="Admin Email or Username"
               />
             </div>
           </div>
@@ -174,6 +189,29 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const localAdmin = localStorage.getItem('admin_login');
+    if (localAdmin === 'true') {
+      const dummyUser = {
+        uid: 'admin',
+        email: 'admin',
+        displayName: 'Admin User',
+        getIdToken: async () => 'admin-dev-token'
+      };
+      setUser(dummyUser as any);
+      dummyUser.getIdToken().then(async (token) => {
+        try {
+          const res = await fetch('/api/user/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            setDbUser(await res.json());
+          }
+        } catch (e) {}
+        setLoading(false);
+      });
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
