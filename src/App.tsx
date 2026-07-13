@@ -15,12 +15,16 @@ import { SmartRouting } from './components/SmartRouting';
 import { Security } from './components/Security';
 
 const Login = () => {
-  const { setUser, setDbUser } = useAppStore();
+  const { user, setUser, setDbUser } = useAppStore();
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   const fetchProfile = async (user: any) => {
     const token = await user.getIdToken();
@@ -50,6 +54,24 @@ const Login = () => {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Client-side input validation (bypass for mock admin)
+    if (email !== 'admin') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError('Please enter a valid email address.');
+        return;
+      }
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters long.');
+        return;
+      }
+      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+        setError('Password must contain at least one uppercase letter, one lowercase letter, and one number.');
+        return;
+      }
+    }
+
     try {
       setIsLoading(true);
       setError('');
